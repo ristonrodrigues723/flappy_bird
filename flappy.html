@@ -162,3 +162,69 @@
                 });
             }
         }
+        
+        if (pipes.length === 0 || pipes[pipes.length - 1].x < canvas.width - 250) {
+                    let topHeight = Math.random() * (canvas.height - pipeGap - 100) + 50;
+                    let newPipe = {
+                        x: canvas.width,
+                        topHeight: topHeight,
+                        powerUp: Math.random() < 0.1, // Changed from 0.4 to 0.1
+                        powerUpCollected: false
+                    };
+                    pipes.push(newPipe);
+                }
+
+                // Check for collision with top or bottom of screen
+                if (birdY > canvas.height - 15 || birdY < 15) {
+                    gameOver();
+                }
+            }
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        function gameOver() {
+            gameActive = false;
+            restartButton.style.display = 'block';
+            if (score > highScore) {
+                highScore = score;
+                highScoreDisplay.textContent = `High Score: ${highScore}`;
+            }
+        }
+
+        function startGame() {
+            birdY = canvas.height / 2;
+            birdVelocity = 0;
+            pipes = [];
+            score = 0;
+            gameActive = true;
+            powerUpActive = false;
+            powerUpTimer = 0;
+            startButton.style.display = 'none';
+            restartButton.style.display = 'none';
+            scoreDisplay.textContent = 'Score: 0';
+        }
+
+        gameLoop();
+
+        document.addEventListener('keydown', function(e) {
+            if (e.code === 'Space') {
+                if (gameActive) {
+                    birdVelocity = birdLift;
+                } else {
+                    startGame();
+                }
+            }
+        });
+
+        canvas.addEventListener('click', function() {
+            if (gameActive) {
+                birdVelocity = birdLift;
+            }
+        });
+
+        startButton.addEventListener('click', startGame);
+        restartButton.addEventListener('click', startGame);
+    </script>
+</body>
+</html>
