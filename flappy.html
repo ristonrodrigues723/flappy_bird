@@ -115,6 +115,20 @@
                 ctx.stroke();
             }
         }
+
+        function drawPipe(x, topHeight) {
+            ctx.fillStyle = '#2ECC71';
+            ctx.fillRect(x, 0, pipeWidth, topHeight);
+            ctx.fillRect(x, topHeight + pipeGap, pipeWidth, canvas.height);
+        }
+
+        function drawPowerUp(x, y) {
+            ctx.fillStyle = '#FF69B4';
+            ctx.beginPath();
+            ctx.arc(x, y, 10, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
         function gameLoop() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -160,21 +174,19 @@
                         gameOver();
                     }
                 });
-            }
-        }
-        
-        if (pipes.length === 0 || pipes[pipes.length - 1].x < canvas.width - 250) {
+
+                if (pipes.length === 0 || pipes[pipes.length - 1].x < canvas.width - 250) {
                     let topHeight = Math.random() * (canvas.height - pipeGap - 100) + 50;
                     let newPipe = {
                         x: canvas.width,
                         topHeight: topHeight,
-                        powerUp: Math.random() < 0.1, // Changed from 0.4 to 0.1
+                        powerUp: Math.random() < 0.1, 
                         powerUpCollected: false
                     };
                     pipes.push(newPipe);
                 }
 
-                // Check for collision with top or bottom of screen
+               
                 if (birdY > canvas.height - 15 || birdY < 15) {
                     gameOver();
                 }
