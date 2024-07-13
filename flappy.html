@@ -115,3 +115,50 @@
                 ctx.stroke();
             }
         }
+        function gameLoop() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            if (gameActive) {
+                birdVelocity += birdGravity;
+                birdY += birdVelocity;
+
+                if (birdVelocity > 5) {
+                    birdVelocity = 5;
+                }
+
+                drawBird(75, birdY);
+
+                if (powerUpActive) {
+                    powerUpTimer--;
+                    if (powerUpTimer <= 0) {
+                        powerUpActive = false;
+                    }
+                }
+
+                pipes.forEach((pipe, index) => {
+                    pipe.x -= 1.5;
+                    drawPipe(pipe.x, pipe.topHeight);
+
+                    if (pipe.x < -pipeWidth) {
+                        pipes.splice(index, 1);
+                        score++;
+                        scoreDisplay.textContent = `Score: ${score}`;
+                    }
+
+                    if (pipe.powerUp && !pipe.powerUpCollected) {
+                        drawPowerUp(pipe.x + pipeWidth / 2, pipe.topHeight + pipeGap / 2);
+                        if (Math.abs(75 - pipe.x - pipeWidth / 2) < 20 && Math.abs(birdY - (pipe.topHeight + pipeGap / 2)) < 20) {
+                            pipe.powerUpCollected = true;
+                            powerUpActive = true;
+                            powerUpTimer = 300;
+                        }
+                    }
+
+                    if (!powerUpActive && 
+                        (pipe.x < 90 && pipe.x + pipeWidth > 60 &&
+                        (birdY < pipe.topHeight + 15 || birdY > pipe.topHeight + pipeGap - 15))) {
+                        gameOver();
+                    }
+                });
+            }
+        }
