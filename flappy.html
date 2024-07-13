@@ -62,3 +62,56 @@
         <div id="scoreDisplay">Score: 0</div>
         <div id="highScoreDisplay">High Score: 0</div>
     </div>
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const restartButton = document.getElementById('restartButton');
+        const startButton = document.getElementById('startButton');
+        const scoreDisplay = document.getElementById('scoreDisplay');
+        const highScoreDisplay = document.getElementById('highScoreDisplay');
+
+        let birdY = canvas.height / 2;
+        let birdVelocity = 0;
+        let birdGravity = 0.2;
+        let birdLift = -4.5;
+        let pipes = [];
+        let pipeWidth = 50;
+        let pipeGap = 170;
+        let score = 0;
+        let highScore = 0;
+        let gameActive = false;
+        let powerUpActive = false;
+        let powerUpTimer = 0;
+
+        function drawBird(x, y) {
+            ctx.fillStyle = powerUpActive ? '#FF69B4' : '#F4D03F';
+            ctx.beginPath();
+            ctx.arc(x, y, 15, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.fillStyle = 'white';
+            ctx.beginPath();
+            ctx.arc(x + 5, y - 5, 5, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.fillStyle = 'black';
+            ctx.beginPath();
+            ctx.arc(x + 6, y - 5, 2, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.fillStyle = '#E67E22';
+            ctx.beginPath();
+            ctx.moveTo(x + 15, y);
+            ctx.lineTo(x + 25, y);
+            ctx.lineTo(x + 15, y + 5);
+            ctx.closePath();
+            ctx.fill();
+
+            if (powerUpActive) {
+                ctx.strokeStyle = 'rgba(255, 105, 180, 0.5)';
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.arc(x, y, 20, 0, Math.PI * 2);
+                ctx.stroke();
+            }
+        }
