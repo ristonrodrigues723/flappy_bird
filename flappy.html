@@ -78,10 +78,19 @@
         <div id="highScoreDisplay">High Score: 0</div>
         <div id="powerUpDisplay"></div>
         <div id="musicToggle">🔊</div>
+        <div id="customMusicContainer">
+            <input type="text" id="customMusicUrl" placeholder="Enter music URL">
+            <button id="setCustomMusicButton">Set Music</button>
+        </div>
+    </div>
+    <audio id="backgroundMusic" loop>
+        <source src="https://cdn.freesound.org/previews/237/237979_4453582-lq.mp3" type="audio/mpeg">
+        
+    </audio>
     </div>
     <audio id="backgroundMusic" loop>
         <source src="please-calm-my-mind-125566.mp3" type="audio/mpeg">
-        Your browser does not support the audio element.
+        
     </audio>
     <script>
         const canvas = document.getElementById('gameCanvas');
@@ -263,6 +272,46 @@
             
             updatePowerUpDisplay();
         }
+        const customMusicUrl = document.getElementById('customMusicUrl');
+        const setCustomMusicButton = document.getElementById('setCustomMusicButton');
+
+        setCustomMusicButton.addEventListener('click', function() {
+            const url = customMusicUrl.value.trim();
+            if (url) {
+                backgroundMusic.src = url;
+                if (isMusicPlaying) {
+                    stopMusic();
+                    playMusic();
+                }
+            } else {
+                alert('Please enter a valid URL for the custom music.');
+            }
+        });
+
+        // Modify existing playMusic function
+        function playMusic() {
+            if (musicPlayPromise) {
+                musicPlayPromise.then(() => {
+                    backgroundMusic.play();
+                }).catch(error => {
+                    console.log('Audio play failed:', error);
+                    alert('Failed to play the audio. Please check the URL and try again.');
+                });
+            } else {
+                musicPlayPromise = backgroundMusic.play();
+                musicPlayPromise.then(() => {
+                    isMusicPlaying = true;
+                    musicToggle.textContent = '🔊';
+                }).catch(error => {
+                    console.log('Audio play failed:', error);
+                    alert('Failed to play the audio. Please check the URL and try again.');
+                    isMusicPlaying = false;
+                    musicToggle.textContent = '🔇';
+                    musicPlayPromise = null;
+                });
+            }
+        }
+
 
         function updatePowerUpDisplay() {
             if (powerUpActive && currentPowerUp && currentPowerUp.name) {
