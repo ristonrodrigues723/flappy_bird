@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Flappy Bird with Invincibility</title>
+    <title>Flappy Bird with Power-ups and Music</title>
     <style>
         body {
             display: flex;
@@ -52,6 +52,21 @@
             top: 10px;
             right: 10px;
         }
+        #powerUpDisplay {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            font-size: 18px;
+            color: #2c3e50;
+        }
+        #musicToggle {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            font-size: 18px;
+            color: #2c3e50;
+            cursor: pointer;
+        }
     </style>
 </head>
 <body>
@@ -61,7 +76,13 @@
         <button id="restartButton" style="display:none;">Restart</button>
         <div id="scoreDisplay">Score: 0</div>
         <div id="highScoreDisplay">High Score: 0</div>
+        <div id="powerUpDisplay"></div>
+        <div id="musicToggle">🔊</div>
     </div>
+    <audio id="backgroundMusic" loop>
+        <source src="please-calm-my-mind-125566.mp3" type="audio/mpeg">
+        Your browser does not support the audio element.
+    </audio>
     <script>
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
@@ -69,6 +90,9 @@
         const startButton = document.getElementById('startButton');
         const scoreDisplay = document.getElementById('scoreDisplay');
         const highScoreDisplay = document.getElementById('highScoreDisplay');
+        const powerUpDisplay = document.getElementById('powerUpDisplay');
+        const musicToggle = document.getElementById('musicToggle');
+        const backgroundMusic = document.getElementById('backgroundMusic');
 
         let birdY = canvas.height / 2;
         let birdVelocity = 0;
@@ -82,9 +106,20 @@
         let gameActive = false;
         let powerUpActive = false;
         let powerUpTimer = 0;
+        let currentPowerUp = null;
+        let scoreMultiplier = 1;
+        let gameSpeed = 1;
+        let isMusicPlaying = false;
+        let musicPlayPromise = null;
+
+        const POWER_UPS = {
+            INVINCIBILITY: { color: '#FF69B4', duration: 300, name: 'Invincibility' },
+            SCORE_MULTIPLIER: { color: '#FFD700', duration: 300, name: 'Score x2' },
+            SLOW_MOTION: { color: '#4169E1', duration: 300, name: 'Slow Motion' }
+        };
 
         function drawBird(x, y) {
-            ctx.fillStyle = powerUpActive ? '#FF69B4' : '#F4D03F';
+            ctx.fillStyle = powerUpActive && currentPowerUp ? currentPowerUp.color : '#F4D03F';
             ctx.beginPath();
             ctx.arc(x, y, 15, 0, Math.PI * 2);
             ctx.fill();
@@ -107,8 +142,8 @@
             ctx.closePath();
             ctx.fill();
 
-            if (powerUpActive) {
-                ctx.strokeStyle = 'rgba(255, 105, 180, 0.5)';
+            if (powerUpActive && currentPowerUp) {
+                ctx.strokeStyle = currentPowerUp.color;
                 ctx.lineWidth = 3;
                 ctx.beginPath();
                 ctx.arc(x, y, 20, 0, Math.PI * 2);
@@ -122,11 +157,13 @@
             ctx.fillRect(x, topHeight + pipeGap, pipeWidth, canvas.height);
         }
 
-        function drawPowerUp(x, y) {
-            ctx.fillStyle = '#FF69B4';
-            ctx.beginPath();
-            ctx.arc(x, y, 10, 0, Math.PI * 2);
-            ctx.fill();
+        function drawPowerUp(x, y, powerUp) {
+            if (powerUp && powerUp.color) {
+                ctx.fillStyle = powerUp.color;
+                ctx.beginPath();
+                ctx.arc(x, y, 10, 0, Math.PI * 2);
+                ctx.fill();
+            }
         }
 
         function gameLoop() {
@@ -142,36 +179,37 @@
 
                 drawBird(75, birdY);
 
-                if (powerUpActive) {
+                if (powerUpActive && currentPowerUp) {
                     powerUpTimer--;
                     if (powerUpTimer <= 0) {
-                        powerUpActive = false;
+                        deactivatePowerUp();
                     }
+                    updatePowerUpDisplay();
                 }
 
                 pipes.forEach((pipe, index) => {
-                    pipe.x -= 1.5;
+                    pipe.x -= 1.5 * gameSpeed;
                     drawPipe(pipe.x, pipe.topHeight);
 
                     if (pipe.x < -pipeWidth) {
                         pipes.splice(index, 1);
-                        score++;
+                        score += scoreMultiplier;
                         scoreDisplay.textContent = `Score: ${score}`;
                     }
 
                     if (pipe.powerUp && !pipe.powerUpCollected) {
-                        drawPowerUp(pipe.x + pipeWidth / 2, pipe.topHeight + pipeGap / 2);
+                        drawPowerUp(pipe.x + pipeWidth / 2, pipe.topHeight + pipeGap / 2, pipe.powerUp);
                         if (Math.abs(75 - pipe.x - pipeWidth / 2) < 20 && Math.abs(birdY - (pipe.topHeight + pipeGap / 2)) < 20) {
                             pipe.powerUpCollected = true;
-                            powerUpActive = true;
-                            powerUpTimer = 300;
+                            activatePowerUp(pipe.powerUp);
                         }
                     }
 
-                    if (!powerUpActive && 
+                    if ((!powerUpActive || (currentPowerUp && currentPowerUp !== POWER_UPS.INVINCIBILITY)) && 
                         (pipe.x < 90 && pipe.x + pipeWidth > 60 &&
                         (birdY < pipe.topHeight + 15 || birdY > pipe.topHeight + pipeGap - 15))) {
                         gameOver();
+                        return; 
                     }
                 });
 
@@ -180,19 +218,58 @@
                     let newPipe = {
                         x: canvas.width,
                         topHeight: topHeight,
-                        powerUp: Math.random() < 0.1, 
+                        powerUp: Math.random() < 0.2 ? getRandomPowerUp() : null,
                         powerUpCollected: false
                     };
                     pipes.push(newPipe);
                 }
 
-               
                 if (birdY > canvas.height - 15 || birdY < 15) {
                     gameOver();
+                    return; 
                 }
             }
 
             requestAnimationFrame(gameLoop);
+        }
+
+        function getRandomPowerUp() {
+            const powerUps = Object.values(POWER_UPS);
+            return powerUps[Math.floor(Math.random() * powerUps.length)];
+        }
+
+        function activatePowerUp(powerUp) {
+            if (!powerUp) return;  
+            
+            deactivatePowerUp();
+            currentPowerUp = powerUp;
+            powerUpActive = true;
+            powerUpTimer = powerUp.duration;
+
+            if (powerUp === POWER_UPS.SCORE_MULTIPLIER) {
+                scoreMultiplier = 2;
+            } else if (powerUp === POWER_UPS.SLOW_MOTION) {
+                gameSpeed = 0.5;
+            }
+            
+            updatePowerUpDisplay();
+        }
+
+        function deactivatePowerUp() {
+            powerUpActive = false;
+            currentPowerUp = null;
+            scoreMultiplier = 1;
+            gameSpeed = 1;
+            
+            updatePowerUpDisplay();
+        }
+
+        function updatePowerUpDisplay() {
+            if (powerUpActive && currentPowerUp && currentPowerUp.name) {
+                powerUpDisplay.textContent = `${currentPowerUp.name}: ${Math.ceil(powerUpTimer / 60)}s`;
+            } else {
+                powerUpDisplay.textContent = '';
+            }
         }
 
         function gameOver() {
@@ -202,6 +279,8 @@
                 highScore = score;
                 highScoreDisplay.textContent = `High Score: ${highScore}`;
             }
+            deactivatePowerUp();
+            stopMusic();
         }
 
         function startGame() {
@@ -212,9 +291,62 @@
             gameActive = true;
             powerUpActive = false;
             powerUpTimer = 0;
+            currentPowerUp = null;
+            scoreMultiplier = 1;
+            gameSpeed = 1;
             startButton.style.display = 'none';
             restartButton.style.display = 'none';
             scoreDisplay.textContent = 'Score: 0';
+            updatePowerUpDisplay();
+            playMusic();
+        }
+
+        function playMusic() {
+            if (musicPlayPromise) {
+                musicPlayPromise.then(() => {
+                    backgroundMusic.play();
+                }).catch(error => {
+                    console.log('Audio play failed:', error);
+                });
+            } else {
+                musicPlayPromise = backgroundMusic.play();
+                musicPlayPromise.then(() => {
+                    isMusicPlaying = true;
+                    musicToggle.textContent = '🔊';
+                }).catch(error => {
+                    console.log('Audio play failed:', error);
+                    isMusicPlaying = false;
+                    musicToggle.textContent = '🔇';
+                    musicPlayPromise = null;
+                });
+            }
+        }
+
+        function stopMusic() {
+            if (musicPlayPromise) {
+                musicPlayPromise.then(() => {
+                    backgroundMusic.pause();
+                    backgroundMusic.currentTime = 0;
+                    isMusicPlaying = false;
+                    musicToggle.textContent = '🔇';
+                    musicPlayPromise = null;
+                }).catch(error => {
+                    console.log('Audio stop failed:', error);
+                });
+            } else {
+                backgroundMusic.pause();
+                backgroundMusic.currentTime = 0;
+                isMusicPlaying = false;
+                musicToggle.textContent = '🔇';
+            }
+        }
+
+        function toggleMusic() {
+            if (isMusicPlaying) {
+                stopMusic();
+            } else {
+                playMusic();
+            }
         }
 
         gameLoop();
@@ -232,11 +364,14 @@
         canvas.addEventListener('click', function() {
             if (gameActive) {
                 birdVelocity = birdLift;
+            } else {
+                startGame();
             }
         });
 
         startButton.addEventListener('click', startGame);
         restartButton.addEventListener('click', startGame);
+        musicToggle.addEventListener('click', toggleMusic);
     </script>
 </body>
 </html>
