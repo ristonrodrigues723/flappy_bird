@@ -3,10 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Flappy Bird with Power-ups and Music</title>
+    <title>Flappy Bird with Power-ups and Custom Music</title>
     <style>
         body {
             display: flex;
+            flex-direction: column;
             justify-content: center;
             align-items: center;
             height: 100vh;
@@ -67,6 +68,10 @@
             color: #2c3e50;
             cursor: pointer;
         }
+        #musicFileInput {
+            margin-top: 10px;
+            font-size: 14px;
+        }
     </style>
 </head>
 <body>
@@ -77,20 +82,11 @@
         <div id="scoreDisplay">Score: 0</div>
         <div id="highScoreDisplay">High Score: 0</div>
         <div id="powerUpDisplay"></div>
-        <div id="musicToggle">🔊</div>
-        <div id="customMusicContainer">
-            <input type="text" id="customMusicUrl" placeholder="Enter music URL">
-            <button id="setCustomMusicButton">Set Music</button>
-        </div>
+        <div id="musicToggle">🔇</div>
     </div>
+    <input type="file" id="musicFileInput" accept="audio/*">
     <audio id="backgroundMusic" loop>
-        <source src="https://cdn.freesound.org/previews/237/237979_4453582-lq.mp3" type="audio/mpeg">
-        
-    </audio>
-    </div>
-    <audio id="backgroundMusic" loop>
-        <source src="please-calm-my-mind-125566.mp3" type="audio/mpeg">
-        
+        Your browser does not support the audio element.
     </audio>
     <script>
         const canvas = document.getElementById('gameCanvas');
@@ -102,6 +98,7 @@
         const powerUpDisplay = document.getElementById('powerUpDisplay');
         const musicToggle = document.getElementById('musicToggle');
         const backgroundMusic = document.getElementById('backgroundMusic');
+        const musicFileInput = document.getElementById('musicFileInput');
 
         let birdY = canvas.height / 2;
         let birdVelocity = 0;
@@ -120,6 +117,7 @@
         let gameSpeed = 1;
         let isMusicPlaying = false;
         let musicPlayPromise = null;
+        let customMusicURL = null;
 
         const POWER_UPS = {
             INVINCIBILITY: { color: '#FF69B4', duration: 300, name: 'Invincibility' },
@@ -233,6 +231,7 @@
                     pipes.push(newPipe);
                 }
 
+                // Check if the bird touches the top or bottom of the screen
                 if (birdY > canvas.height - 15 || birdY < 15) {
                     gameOver();
                     return; 
@@ -272,46 +271,6 @@
             
             updatePowerUpDisplay();
         }
-        const customMusicUrl = document.getElementById('customMusicUrl');
-        const setCustomMusicButton = document.getElementById('setCustomMusicButton');
-
-        setCustomMusicButton.addEventListener('click', function() {
-            const url = customMusicUrl.value.trim();
-            if (url) {
-                backgroundMusic.src = url;
-                if (isMusicPlaying) {
-                    stopMusic();
-                    playMusic();
-                }
-            } else {
-                alert('Please enter a valid URL for the custom music.');
-            }
-        });
-
-        // Modify existing playMusic function
-        function playMusic() {
-            if (musicPlayPromise) {
-                musicPlayPromise.then(() => {
-                    backgroundMusic.play();
-                }).catch(error => {
-                    console.log('Audio play failed:', error);
-                    alert('Failed to play the audio. Please check the URL and try again.');
-                });
-            } else {
-                musicPlayPromise = backgroundMusic.play();
-                musicPlayPromise.then(() => {
-                    isMusicPlaying = true;
-                    musicToggle.textContent = '🔊';
-                }).catch(error => {
-                    console.log('Audio play failed:', error);
-                    alert('Failed to play the audio. Please check the URL and try again.');
-                    isMusicPlaying = false;
-                    musicToggle.textContent = '🔇';
-                    musicPlayPromise = null;
-                });
-            }
-        }
-
 
         function updatePowerUpDisplay() {
             if (powerUpActive && currentPowerUp && currentPowerUp.name) {
@@ -329,7 +288,16 @@
                 highScoreDisplay.textContent = `High Score: ${highScore}`;
             }
             deactivatePowerUp();
-            stopMusic();
+            
+            // Draw "Game Over" text
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = 'white';
+            ctx.font = '48px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('Game Over', canvas.width / 2, canvas.height / 2 - 50);
+            ctx.font = '24px Arial';
+            ctx.fillText(`Score: ${score}`, canvas.width / 2, canvas.height / 2 + 50);
         }
 
         function startGame() {
@@ -347,42 +315,30 @@
             restartButton.style.display = 'none';
             scoreDisplay.textContent = 'Score: 0';
             updatePowerUpDisplay();
-            playMusic();
+            if (customMusicURL) {
+                playMusic();
+            }
         }
 
         function playMusic() {
-            if (musicPlayPromise) {
-                musicPlayPromise.then(() => {
-                    backgroundMusic.play();
-                }).catch(error => {
-                    console.log('Audio play failed:', error);
-                });
-            } else {
+            if (customMusicURL) {
+                backgroundMusic.src = customMusicURL;
                 musicPlayPromise = backgroundMusic.play();
-                musicPlayPromise.then(() => {
-                    isMusicPlaying = true;
-                    musicToggle.textContent = '🔊';
-                }).catch(error => {
-                    console.log('Audio play failed:', error);
-                    isMusicPlaying = false;
-                    musicToggle.textContent = '🔇';
-                    musicPlayPromise = null;
-                });
+                if (musicPlayPromise !== undefined) {
+                    musicPlayPromise.then(_ => {
+                        isMusicPlaying = true;
+                        musicToggle.textContent = '🔊';
+                    }).catch(error => {
+                        console.log('Audio play failed:', error);
+                        isMusicPlaying = false;
+                        musicToggle.textContent = '🔇';
+                    });
+                }
             }
         }
 
         function stopMusic() {
-            if (musicPlayPromise) {
-                musicPlayPromise.then(() => {
-                    backgroundMusic.pause();
-                    backgroundMusic.currentTime = 0;
-                    isMusicPlaying = false;
-                    musicToggle.textContent = '🔇';
-                    musicPlayPromise = null;
-                }).catch(error => {
-                    console.log('Audio stop failed:', error);
-                });
-            } else {
+            if (backgroundMusic.src) {
                 backgroundMusic.pause();
                 backgroundMusic.currentTime = 0;
                 isMusicPlaying = false;
@@ -391,10 +347,26 @@
         }
 
         function toggleMusic() {
-            if (isMusicPlaying) {
-                stopMusic();
-            } else {
-                playMusic();
+            if (customMusicURL) {
+                if (isMusicPlaying) {
+                    stopMusic();
+                } else {
+                    playMusic();
+                }
+            }
+        }
+
+        function handleCustomMusicUpload(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    customMusicURL = e.target.result;
+                    backgroundMusic.src = customMusicURL;
+                    musicToggle.textContent = '🔇';
+                    isMusicPlaying = false;
+                };
+                reader.readAsDataURL(file);
             }
         }
 
@@ -421,6 +393,7 @@
         startButton.addEventListener('click', startGame);
         restartButton.addEventListener('click', startGame);
         musicToggle.addEventListener('click', toggleMusic);
+        musicFileInput.addEventListener('change', handleCustomMusicUpload);
     </script>
 </body>
 </html>
