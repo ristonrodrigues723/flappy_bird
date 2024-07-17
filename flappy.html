@@ -104,7 +104,7 @@
         let birdY = canvas.height / 2;
         let birdVelocity = 0;
         let birdGravity = 0.25;  // Reduced gravity
-        let birdLift = -4.5;  // Adjusted lift
+        let birdLift = -5;  // Adjusted lift
         let pipes = [];
         let pipeWidth = 50;
         let pipeGap = 170;
@@ -186,6 +186,10 @@
                 }
 
                 drawBird(75, birdY);
+                if (birdY + 15 > canvas.height) {  // 15 is the radius of the bird
+            gameOver();
+            return;
+        }
 
                 if (powerUpActive && currentPowerUp) {
                     powerUpTimer--;
@@ -294,6 +298,7 @@
                 highScoreDisplay.textContent = `High Score: ${highScore}`;
                 
             }
+            
             deactivatePowerUp();
             
             // Draw "Game Over" text
